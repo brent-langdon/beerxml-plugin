@@ -67,7 +67,6 @@ class BeerXML_Admin {
 		register_setting( 'beerxml_shortcode_group', 'beerxml_shortcode_fermentation', 'absint' );
 		register_setting( 'beerxml_shortcode_group', 'beerxml_shortcode_misc', 'absint' );
 		register_setting( 'beerxml_shortcode_group', 'beerxml_shortcode_mhop', 'absint' );
-		register_setting( 'beerxml_shortcode_group', 'beerxml_shortcode_actuals', 'absint' );
 
 		add_settings_section(
 			'beerxml_shortcode_section',
@@ -128,14 +127,6 @@ class BeerXML_Admin {
 			'beerxml_shortcode_fermentation',
 			__( 'Include fermentation details', 'beerxml-shortcode' ),
 			array( $this, 'fermentation_option' ),
-			'beerxml-shortcode',
-			'beerxml_shortcode_section'
-		);
-
-		add_settings_field(
-			'beerxml_shortcode_actuals',
-			__( 'Include recipe actuals', 'beerxml-shortcode' ),
-			array( $this, 'actuals_option' ),
 			'beerxml-shortcode',
 			'beerxml_shortcode_section'
 		);
@@ -232,14 +223,6 @@ class BeerXML_Admin {
 		<?php
 	}
 
-	/**
-	 * Callback for actuals option
-	 */
-	function actuals_option() {
-		?>
-		<input type="checkbox" id="beerxml_shortcode_actuals" name="beerxml_shortcode_actuals" value="1" <?php checked( get_option( 'beerxml_shortcode_actuals', 1 ) ); ?> />
-		<?php
-	}
 }
 
 // init admin
@@ -289,11 +272,6 @@ if ( function_exists( 'shortcode_ui_register_for_shortcode' ) ) {
 				array(
 					'label'       => __( 'Include miscellaneous ingredients?', 'beerxml-shortcode' ),
 					'attr'        => 'misc',
-					'type'        => 'checkbox',
-				),
-				array(
-					'label'       => __( 'Include recipe actuals?', 'beerxml-shortcode' ),
-					'attr'        => 'actuals',
 					'type'        => 'checkbox',
 				),
 				array(

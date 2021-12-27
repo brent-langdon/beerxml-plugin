@@ -134,7 +134,6 @@ class BeerXML_Shortcode {
 			'style'        => get_option( 'beerxml_shortcode_style', 1 ), // include style details
 			'mash'         => get_option( 'beerxml_shortcode_mash', 1 ), // include mash details
 			'misc'         => get_option( 'beerxml_shortcode_misc', 1 ), // include miscs details
-			'actuals'      => get_option( 'beerxml_shortcode_actuals', 1 ), // include actuals in recipe details
 			'fermentation' => get_option( 'beerxml_shortcode_fermentation', 0 ), // include fermentation details
 			'mhop'         => get_option( 'beerxml_shortcode_mhop', 0 ), // display hops in metric
 		), $atts ) );
@@ -159,7 +158,6 @@ class BeerXML_Shortcode {
 		$mash         = filter_var( esc_attr( $mash ), FILTER_VALIDATE_BOOLEAN );
 		$fermentation = filter_var( esc_attr( $fermentation ), FILTER_VALIDATE_BOOLEAN );
 		$misc         = filter_var( esc_attr( $misc ), FILTER_VALIDATE_BOOLEAN );
-		$actuals      = filter_var( esc_attr( $actuals ), FILTER_VALIDATE_BOOLEAN );
 		$mhop         = filter_var( esc_attr( $mhop ), FILTER_VALIDATE_BOOLEAN );
 
 		if ( ! $cache || false === ( $beer_xml = get_transient( $recipe_id ) ) ) {
@@ -185,31 +183,20 @@ class BeerXML_Shortcode {
 		}
 
 		$btime = round( $beer_xml->recipes[0]->boil_time );
+		$srm = round( $beer_xml->recipes[0]->est_color, 1);
+		$eff = round( $beer_xml->recipes[0]->efficiency, 1);
 		$t_details = __( 'Recipe Details', 'beerxml-shortcode' );
+		$t_style   = __( 'Style', 'beerxml-shortcode' );
+		$t_type   = __( 'Type', 'beerxml-shortcode' );
 		$t_size    = __( 'Batch Size', 'beerxml-shortcode' );
-		$t_boil    = __( 'Boil Time', 'beerxml-shortcode' );
 		$t_time    = __( 'min', 'beerxml-shortcode' );
 		$t_ibu     = __( 'IBU', 'beerxml-shortcode' );
 		$t_srm     = __( 'SRM', 'beerxml-shortcode' );
 		$t_og      = __( 'Est. OG', 'beerxml-shortcode' );
 		$t_fg      = __( 'Est. FG', 'beerxml-shortcode' );
 		$t_abv     = __( 'ABV', 'beerxml-shortcode' );
-		$t_actuals = __( 'Actuals', 'beerxml-shortcode' );
-
-		$act = '';
-		if ( $actuals ) {
-			$og = round( $beer_xml->recipes[0]->og, 3 );
-			$fg = round( $beer_xml->recipes[0]->fg, 3 );
-			$act = <<<ACTUALS
-			<tr class='beerxml-actuals'>
-				<td colspan="3"></td>
-				<td><strong>$t_actuals</strong></td>
-				<td>$og</td>
-				<td>$fg</td>
-				<td>{$beer_xml->recipes[0]->abv}</td>
-			</tr>
-ACTUALS;
-		}
+		$t_eff     = __( 'Efficiency', 'beerxml-shortcode' );
+		$t_boil    = __( 'Boil Time', 'beerxml-shortcode' );
 
 		// cleanup any extra text the 'est' might add
 		$est_og = preg_split( '/\s/', trim( $beer_xml->recipes[0]->est_og ) );
@@ -219,31 +206,18 @@ ACTUALS;
 		$details = <<<DETAILS
 		<div class='beerxml-details'>
 			<h3>$t_details</h3>
-			<table>
-				<thead>
-					<tr>
-						<th>$t_size</th>
-						<th>$t_boil</th>
-						<th>$t_ibu</th>
-						<th>$t_srm</th>
-						<th>$t_og</th>
-						<th>$t_fg</th>
-						<th>$t_abv</th>
-					</tr>
-				</thead>
-				<tbody>
-					<tr>
-						<td>{$beer_xml->recipes[0]->batch_size} $t_vol</td>
-						<td>$btime $t_time</td>
-						<td>{$beer_xml->recipes[0]->ibu}</td>
-						<td>{$beer_xml->recipes[0]->est_color}</td>
-						<td>$est_og</td>
-						<td>$est_fg</td>
-						<td>{$beer_xml->recipes[0]->est_abv}</td>
-					</tr>
-					$act
-				</tbody>
-			</table>
+			<ul>
+				<li>$t_style: {$beer_xml->recipes[0]->style->name}</li>
+				<li>$t_size: {$beer_xml->recipes[0]->batch_size} $t_vol</li>
+				<li>$t_type: {$beer_xml->recipes[0]->type}</li>
+				<li>$t_ibu: {$beer_xml->recipes[0]->ibu}</li>
+				<li>$t_srm: $srm</li>
+				<li>$t_og: $est_og</li>
+				<li>$t_fg: $est_fg</li>
+				<li>$t_abv: {$beer_xml->recipes[0]->est_abv}</li>
+				<li>$t_eff: $eff%</li>
+				<li>$t_boil: $btime $t_time</li>
+			</ul>
 		</div>
 DETAILS;
 
@@ -251,44 +225,14 @@ DETAILS;
 		 * Style Details
 		 **************/
 		$style_details = '';
-		$t_name = __( 'Name', 'beerxml-shortcode' );
-		if ( ! empty( $beer_xml->recipes[0]->style ) ) {
-			if ( ! term_exists( $beer_xml->recipes[0]->style->name, 'beer_style' ) ) {
-				wp_insert_term( $beer_xml->recipes[0]->style->name, 'beer_style' );
-			}
-
-			wp_set_object_terms( $post->ID, $beer_xml->recipes[0]->style->name, 'beer_style' );
-		}
-
 		if ( $style && $beer_xml->recipes[0]->style ) {
 			$t_style = __( 'Style Details', 'beerxml-shortcode' );
-			$t_category = __( 'Cat.', 'beerxml-shortcode' );
-			$t_og_range = __( 'OG Range', 'beerxml-shortcode' );
-			$t_fg_range = __( 'FG Range', 'beerxml-shortcode' );
-			$t_ibu_range = __( 'IBU', 'beerxml-shortcode' );
-			$t_srm_range = __( 'SRM', 'beerxml-shortcode' );
-			$t_carb_range = __( 'Carb', 'beerxml-shortcode' );
-			$t_abv_range = __( 'ABV', 'beerxml-shortcode' );
 			$style_details = <<<STYLE
 			<div class='beerxml-style'>
 				<h3>$t_style</h3>
-				<table>
-					<thead>
-						<tr>
-							<th>$t_name</th>
-							<th>$t_category</th>
-							<th>$t_og_range</th>
-							<th>$t_fg_range</th>
-							<th>$t_ibu_range</th>
-							<th>$t_srm_range</th>
-							<th>$t_carb_range</th>
-							<th>$t_abv_range</th>
-						</tr>
-					</thead>
-					<tbody>
-						{$this->build_style( $beer_xml->recipes[0]->style )}
-					</tbody>
-				</table>
+				<ul>
+					{$this->build_style( $beer_xml->recipes[0]->style )}
+				</ul>
 			</div>
 STYLE;
 		}
@@ -307,18 +251,9 @@ STYLE;
 		$fermentables = <<<FERMENTABLES
 		<div class='beerxml-fermentables'>
 			<h3>$t_fermentables</h3>
-			<table>
-				<thead>
-					<tr>
-						<th>$t_name</th>
-						<th>$t_amount</th>
-						<th>%</th>
-					</tr>
-				</thead>
-				<tbody>
-					$fermentables
-				</tbody>
-			</table>
+			<ul>
+				$fermentables
+			</ul>
 		</div>
 FERMENTABLES;
 
@@ -332,28 +267,12 @@ FERMENTABLES;
 			}
 
 			$t_hops  = __( 'Hops', 'beerxml-shortcode' );
-			$t_time  = __( 'Time', 'beerxml-shortcode' );
-			$t_use   = __( 'Use', 'beerxml-shortcode' );
-			$t_form  = __( 'Form', 'beerxml-shortcode' );
-			$t_alpha = __( 'Alpha %', 'beerxml-shortcode' );
 			$hops = <<<HOPS
 			<div class='beerxml-hops'>
 				<h3>$t_hops</h3>
-				<table>
-					<thead>
-						<tr>
-							<th>$t_name</th>
-							<th>$t_amount</th>
-							<th>$t_time</th>
-							<th>$t_use</th>
-							<th>$t_form</th>
-							<th>$t_alpha</th>
-						</tr>
-					</thead>
-					<tbody>
-						$hops
-					</tbody>
-				</table>
+				<ul>
+					$hops
+				</ul>
 			</div>
 HOPS;
 		}
@@ -372,20 +291,9 @@ HOPS;
 			$miscs = <<<MISCS
 			<div class='beerxml-miscs'>
 				<h3>$t_miscs</h3>
-				<table>
-					<thead>
-						<tr>
-							<th>$t_name</th>
-							<th>$t_amount</th>
-							<th>$t_time</th>
-							<th>$t_use</th>
-							<th>$t_type</th>
-						</tr>
-					</thead>
-					<tbody>
-						$miscs
-					</tbody>
-				</table>
+				<ul>
+					$miscs
+				</ul>
 			</div>
 MISCS;
 		}
@@ -399,26 +307,13 @@ MISCS;
 				$yeasts .= $this->build_yeast( $yeast, $metric );
 			}
 
-			$t_yeast       = __( 'Yeast', 'beerxml-shortcode' );
-			$t_lab         = __( 'Lab', 'beerxml-shortcode' );
-			$t_attenuation = __( 'Attenuation', 'beerxml-shortcode' );
-			$t_temperature = __( 'Temperature', 'beerxml-shortcode' );
+			$t_yeast = __( 'Yeast', 'beerxml-shortcode' );
 			$yeasts = <<<YEASTS
 			<div class='beerxml-yeasts'>
 				<h3>$t_yeast</h3>
-				<table>
-					<thead>
-						<tr>
-							<th>$t_name</th>
-							<th>$t_lab</th>
-							<th>$t_attenuation</th>
-							<th>$t_temperature</th>
-						</tr>
-					</thead>
-					<tbody>
-						$yeasts
-					</tbody>
-				</table>
+				<ul>
+					$yeasts
+				</ul>
 			</div>
 YEASTS;
 		}
@@ -434,24 +329,14 @@ YEASTS;
 				}
 
 				$t_mash           = __( 'Mash', 'beerxml-shortcode' );
-				$t_mash_step_name = __( 'Step', 'beerxml-shortcode' );
-				$t_mash_step_time = __( 'Time', 'beerxml-shortcode' );
-				$t_mash_step_temp = __( 'Temperature', 'beerxml-shortcode' );
+				$ph = round( $beer_xml->recipes[0]->mash->ph, 1 );
 				$mash_details = <<<MASH
 				<div class='beerxml-mash'>
 					<h3>$t_mash</h3>
-					<table>
-						<thead>
-							<tr>
-								<th>$t_mash_step_name</th>
-								<th>$t_mash_step_temp</th>
-								<th>$t_mash_step_time</th>
-							</tr>
-						</thead>
-						<tbody>
-							$mash_details
-						</tbody>
-					</table>
+					<ul>
+						<li>Target pH: $ph</li>
+						$mash_details
+					</ul>
 				</div>
 MASH;
 			}
@@ -468,25 +353,12 @@ MASH;
 			}
 
 			$t_fermentation           = __( 'Fermentation', 'beerxml-shortcode' );
-			$t_fermentation_step_name = __( 'Step', 'beerxml-shortcode' );
-			$t_fermentation_step_time = __( 'Time', 'beerxml-shortcode' );
-			$t_fermentation_step_temp = __( 'Temperature', 'beerxml-shortcode' );
-
 			$fermentation_details = <<<FERMENTATION
 			<div class='beerxml-fermentation'>
 				<h3>$t_fermentation</h3>
-				<table>
-					<thead>
-						<tr>
-							<th>$t_fermentation_step_name</th>
-							<th>$t_fermentation_step_time</th>
-							<th>$t_fermentation_step_temp</th>
-						</tr>
-					</thead>
-					<tbody>
-						$fermentation_details
-					</tbody>
-				</table>
+				<ul>
+					$fermentation_details
+				</ul>
 			</div>
 FERMENTATION;
 		}
@@ -501,13 +373,7 @@ FERMENTATION;
 			$notes = <<<NOTES
 			<div class='beerxml-notes'>
 				<h3>$t_notes</h3>
-				<table>
-					<tbody>
-						<tr>
-							<td>$formatted_notes</td>
-						</tr>
-					</tbody>
-				</table>
+				<p>$formatted_notes</p>
 			</div>
 NOTES;
 		}
@@ -522,13 +388,7 @@ NOTES;
 			$link = <<<LINK
 			<div class="beerxml-download">
 				<h3>$t_download</h3>
-				<table>
-					<tbody>
-						<tr>
-							<td><a href="$recipe" download="$recipe_filename">$t_link</a></td>
-						</tr>
-					</tbody>
-				</table>
+				<p><a href="$recipe" download="$recipe_filename">$t_link</a></p>
 			</div>
 LINK;
 		}
@@ -563,6 +423,15 @@ HTML;
 	static function build_style( $style ) {
 		global $post;
 
+		$t_name = __( 'Name', 'beerxml-shortcode' );
+		$t_category = __( 'Cat.', 'beerxml-shortcode' );
+		$t_og_range = __( 'OG Range', 'beerxml-shortcode' );
+		$t_fg_range = __( 'FG Range', 'beerxml-shortcode' );
+		$t_ibu_range = __( 'IBU', 'beerxml-shortcode' );
+		$t_srm_range = __( 'SRM', 'beerxml-shortcode' );
+		$t_carb_range = __( 'Carb', 'beerxml-shortcode' );
+		$t_abv_range = __( 'ABV', 'beerxml-shortcode' );
+
 		$category = $style->category_number . ' ' . $style->style_letter;
 		$og_range = round( $style->og_min, 3 ) . ' - ' . round( $style->og_max, 3 );
 		$fg_range = round( $style->fg_min, 3 ) . ' - ' . round( $style->fg_max, 3 );
@@ -571,24 +440,22 @@ HTML;
 		$carb_range = round( $style->carb_min, 1 ) . ' - ' . round( $style->carb_max, 1 );
 		$abv_range = round( $style->abv_min, 1 ) . ' - ' . round( $style->abv_max, 1 );
 
-		$catlist = get_the_terms( $post->ID, 'beer_style' );
-		$catlist = array_values( $catlist );
-		if ( $catlist && ! is_wp_error( $catlist ) ) {
-			$link = get_term_link( $catlist[0]->term_id, 'beer_style' );
-			$catname = "<a href='{$link}'>{$catlist[0]->name}</a>";
-		}
+		// $catlist = get_the_terms( $post->ID, 'beer_style' );
+		// $catlist = array_values( $catlist );
+		// if ( $catlist && ! is_wp_error( $catlist ) ) {
+		// 	$link = get_term_link( $catlist[0]->term_id, 'beer_style' );
+		// 	$catname = "<a href='{$link}'>{$catlist[0]->name}</a>";
+		// }
 
 		return <<<STYLE
-		<tr>
-			<td>$catname</td>
-			<td>$category</td>
-			<td>$og_range</td>
-			<td>$fg_range</td>
-			<td>$ibu_range</td>
-			<td>$srm_range</td>
-			<td>$carb_range</td>
-			<td>$abv_range %</td>
-		</tr>
+		<li>$t_name: {$style->name}</li>
+		<li>$t_category: $category</li>
+		<li>$t_og_range: $og_range</li>
+		<li>$t_fg_range: $fg_range</li>
+		<li>$t_ibu_range: $ibu_range</li>
+		<li>$t_srm_range: $srm_range</li>
+		<li>$t_carb_range: $carb_range</li>
+		<li>$t_abv_range: $abv_range</li>
 STYLE;
 	}
 
@@ -599,32 +466,28 @@ STYLE;
 	 * @return string               table row containing fermentable details
 	 */
 	static function build_fermentable( $fermentable, $total, $metric = false ) {
-		$percentage = round( $fermentable->percentage( $total ), 2 );
+		$percentage = round( $fermentable->percentage( $total ), 1 );
 		if ( $metric ) {
 			if ( $fermentable->amount < 0.9995 ) {
-				$fermentable->amount = round( $fermentable->amount * 1000, 1 );
+				$fermentable->amount = round( $fermentable->amount * 1000, 0 );
 				$t_weight = __( 'g', 'beerxml-shortcode' );
 			} else {
-				$fermentable->amount = round( $fermentable->amount, 3 );
+				$fermentable->amount = round( $fermentable->amount, 1 );
 				$t_weight = __( 'kg', 'beerxml-shortcode' );
 			}
 		} else {
 			$fermentable->amount = $fermentable->amount * 2.20462;
 			if ( $fermentable->amount < 0.995 ) {
-				$fermentable->amount = round( $fermentable->amount * 16, 2 );
+				$fermentable->amount = round( $fermentable->amount * 16, 1 );
 				$t_weight = __( 'oz', 'beerxml-shortcode' );
 			} else {
-				$fermentable->amount = round( $fermentable->amount, 3 );
+				$fermentable->amount = round( $fermentable->amount, 2 );
 				$t_weight = __( 'lbs', 'beerxml-shortcode' );
 			}
 		}
 
 		return <<<FERMENTABLE
-		<tr>
-			<td>$fermentable->name</td>
-			<td>$fermentable->amount $t_weight</td>
-			<td>$percentage</td>
-		</tr>
+		<li>$fermentable->amount $t_weight ($percentage%) $fermentable->name</li>
 FERMENTABLE;
 	}
 
@@ -637,19 +500,19 @@ FERMENTABLE;
 	static function build_hop( $hop, $metric = false ) {
 		if ( $metric ) {
 			if ( $hop->amount < 0.9995 ) {
-				$hop->amount = round( $hop->amount * 1000, 1 );
+				$hop->amount = round( $hop->amount * 1000, 0 );
 				$t_weight = __( 'g', 'beerxml-shortcode' );
 			} else {
-				$hop->amount = round( $hop->amount, 3 );
+				$hop->amount = round( $hop->amount, 2 );
 				$t_weight = __( 'kg', 'beerxml-shortcode' );
 			}
 		} else {
 			$hop->amount = $hop->amount * 2.20462;
 			if ( $hop->amount < 0.995 ) {
-				$hop->amount = round( $hop->amount * 16, 2 );
+				$hop->amount = round( $hop->amount * 16, 1 );
 				$t_weight = __( 'oz', 'beerxml-shortcode' );
 			} else {
-				$hop->amount = round( $hop->amount, 3 );
+				$hop->amount = round( $hop->amount, 2 );
 				$t_weight = __( 'lbs', 'beerxml-shortcode' );
 			}
 		}
@@ -665,14 +528,7 @@ FERMENTABLE;
 		$hop->alpha = round( $hop->alpha, 1 );
 
 		return <<<HOP
-		<tr>
-			<td>$hop->name</td>
-			<td>$hop->amount $t_weight</td>
-			<td>$hop->time $t_time</td>
-			<td>$hop->use</td>
-			<td>$hop->form</td>
-			<td>$hop->alpha</td>
-		</tr>
+		<li>$hop->amount $t_weight - $hop->name ($hop->alpha%) - $hop->use $hop->time $t_time</li>
 HOP;
 	}
 
@@ -698,7 +554,7 @@ HOP;
 				$misc->amount = round( $misc->amount * 1000, 1 );
 				$t_weight = __( 'g', 'beerxml-shortcode' );
 			} else {
-				$misc->amount = round( $misc->amount * 35.274, 2 );
+				$misc->amount = round( $misc->amount * 35.274, 1 );
 				$t_weight = __( 'oz', 'beerxml-shortcode' );
 			}
 
@@ -706,13 +562,7 @@ HOP;
 		}
 
 		return <<<MISC
-		<tr>
-			<td>$misc->name</td>
-			<td>$amount</td>
-			<td>$misc->time $t_time</td>
-			<td>$misc->use</td>
-			<td>$misc->type</td>
-		</tr>
+		<li>$amount - $misc->name - $misc->type - $misc->use $misc->time $t_time</li>
 MISC;
 	}
 
@@ -723,25 +573,12 @@ MISC;
 	 * @return string               table row containing yeast details
 	 */
 	static function build_yeast( $yeast, $metric = false ) {
-		if ( $metric ) {
-			$yeast->min_temperature = round( $yeast->min_temperature, 2 );
-			$yeast->max_temperature = round( $yeast->max_temperature, 2 );
-			$t_temp = __( 'C', 'beerxml-shortcode' );
-		} else {
-			$yeast->min_temperature = round( ( $yeast->min_temperature * (9/5) ) + 32, 1 );
-			$yeast->max_temperature = round( ( $yeast->max_temperature * (9/5) ) + 32, 1 );
-			$t_temp = __( 'F', 'beerxml-shortcode' );
-		}
 
-		$yeast->attenuation = round( $yeast->attenuation );
+		// Would be nice to be able to list an amount (like "1 pkg" or "11.5 g")
+		//	the BeerXML seems to just have an amount in ml
 		$product_id = ! empty( $yeast->product_id ) ? " ({$yeast->product_id})" : '';
 		return <<<YEAST
-		<tr>
-			<td>{$yeast->name}$product_id</td>
-			<td>{$yeast->laboratory}</td>
-			<td>{$yeast->attenuation}%</td>
-			<td>{$yeast->min_temperature}°$t_temp - {$yeast->max_temperature}°$t_temp</td>
-		</tr>
+		<li>{$yeast->name}$product_id, {$yeast->laboratory}</li>
 YEAST;
 	}
 
@@ -752,23 +589,40 @@ YEAST;
 	 * @return string              table row containing mash details
 	 */
 	static function build_mash( $mash_details, $metric = false ) {
+
+		// parse and convert the infusion temp, comes with amount and units (eg "159 F")
+		$inf_temp_arr = preg_split( '/\s/', trim( $mash_details->infuse_temp ) );
+		$inf_temp = $inf_temp_arr[0];
+		$inf_temp_unit = $inf_temp_arr[1];
+		$inf_temp_f = ("F" == $inf_temp_unit);
+
 		if ( $metric ) {
-			$mash_details->step_temp = round( $mash_details->step_temp, 2 );
+			$mash_details->step_temp = round( $mash_details->step_temp, 1 );
 			$t_temp = __( 'C', 'beerxml-shortcode' );
+			$volume = round( $mash_details->infuse_amount, 1 );
+			$t_vol = __( 'L', 'beerxml-shortcode' );
+			if ($inf_temp_f) {
+				$inf_temp = round( ($inf_temp − 32) * (5/9), 1);
+			}
 		} else {
 			$mash_details->step_temp = round( ( $mash_details->step_temp * (9/5) ) + 32, 1 );
 			$t_temp = __( 'F', 'beerxml-shortcode' );
+			$volume = round( $mash_details->infuse_amount * 0.264172, 2 );
+			$t_vol = __( 'gal', 'beerxml-shortcode' );
+			if (!$inf_temp_f) {
+				$inf_temp = round( ( $inf_temp * (9/5) ) + 32, 1 );
+			}
 		}
+
 
 		$mash_details->step_time = round( $mash_details->step_time );
 		$t_minutes = __( 'min', 'beerxml-shortcode' );
 
 		return <<<MASH
-		<tr>
-			<td>$mash_details->name</td>
-			<td>{$mash_details->step_temp}°$t_temp</td>
-			<td>{$mash_details->step_time} $t_minutes</td>
-		</tr>
+		<li>$mash_details->name
+		 - {$mash_details->step_temp}&deg;$t_temp
+		 - {$mash_details->step_time} $t_minutes
+		 - $volume $t_vol @ $inf_temp $t_temp</li>
 MASH;
 	}
 
@@ -781,7 +635,7 @@ MASH;
 		$fermentation_stages = array();
 		if ( 1 <= $recipe->fermentation_stages ) {
 			$fermentation_stages[] = array(
-				'name' => 'Primary',
+				'name' => 'Stage #1',
 				'time' => $recipe->primary_age,
 				'temp' => $recipe->primary_temp
 			);
@@ -789,7 +643,7 @@ MASH;
 
 		if ( 2 <= $recipe->fermentation_stages ) {
 			$fermentation_stages[] = array(
-				'name' => 'Secondary',
+				'name' => 'Stage #2',
 				'time' => $recipe->secondary_age,
 				'temp' => $recipe->secondary_temp
 			);
@@ -797,17 +651,11 @@ MASH;
 
 		if ( 3 == $recipe->fermentation_stages ) {
 			$fermentation_stages[] = array(
-				'name' => 'Tertiary',
+				'name' => 'Stage #3',
 				'time' => $recipe->tertiary_age,
 				'temp' => $recipe->tertiary_temp
 			);
 		}
-
-		$fermentation_stages[] = array(
-			'name' => 'Aging',
-			'time' => $recipe->age,
-			'temp' => $recipe->age_temp
-		);
 
 		return $fermentation_stages;
 	}
@@ -820,7 +668,7 @@ MASH;
 	 */
 	static function build_fermentation( $fermentation_details, $metric = false ) {
 		if ( $metric ) {
-			$fermentation_details['temp'] = round( $fermentation_details['temp'], 2 );
+			$fermentation_details['temp'] = round( $fermentation_details['temp'], 1 );
 			$t_temp = __( 'C', 'beerxml-shortcode' );
 		} else {
 			$fermentation_details['temp'] = round( ( $fermentation_details['temp'] * (9/5) ) + 32, 1 );
@@ -830,11 +678,7 @@ MASH;
 		$fermentation_details['time'] = round( $fermentation_details['time'] );
 		$t_days = __( 'days', 'beerxml-shortcode' );
 		return <<<FERMENTATION
-		<tr>
-			<td>{$fermentation_details['name']}</td>
-			<td>{$fermentation_details['time']} $t_days</td>
-			<td>{$fermentation_details['temp']}°$t_temp</td>
-		</tr>
+		<li>{$fermentation_details['name']} - {$fermentation_details['time']} $t_days - {$fermentation_details['temp']}&deg;$t_temp</li>
 FERMENTATION;
 	}
 }

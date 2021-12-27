@@ -24,6 +24,15 @@ msgstr ""
 msgid "Recipe Details"
 msgstr ""
 
+msgid "Style"
+msgstr ""
+
+msgid "Type"
+msgstr ""
+
+msgid "Efficiency"
+msgstr ""
+
 #: beerxml-shortcode.php:115
 msgid "Batch Size"
 msgstr ""

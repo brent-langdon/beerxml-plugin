@@ -30,7 +30,6 @@ It follows the basic format of:
 	fermentation=true|false
 	mhop=true|false
 	misc=true|false
-	actuals=true|false
 	cache=-1|{seconds to cache}]
 
 Please note all options (minus recipe) are optional and have the following defaults:
@@ -41,7 +40,6 @@ Please note all options (minus recipe) are optional and have the following defau
 * style = true
 * mash = true
 * misc = true
-* actuals = true
 * fermentation = false
 * mhop = false
 
